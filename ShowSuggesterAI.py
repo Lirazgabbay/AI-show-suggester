@@ -8,6 +8,7 @@ def ask_from_user():
     # ask from user for N shows and return the list of shows after fixing typos and matching to csv file
     # while no -> ask again from user -> each step call match_showes() and confirm_matches()
     # call the match shows function and confirm matches function
+    # TODO: input validation
     pass
 
 def fix_and_match_shows(user_shows):
@@ -29,9 +30,18 @@ def fix_and_match_shows(user_shows):
                 seen_shows.add(match[0])
     return matched_shows
 
-def confirm_matches(fixed_shows_names):
+def confirm_matches(fixed_shows_names ):
     # ask the user for confirmation after fixing shows names and return True if confirmed
-    pass
+    print(f"Making sure, do you mean {str(fixed_shows_names)}? (y/n)")
+    user_input = input()
+    while user_input.lower() not in ['y', 'n']: 
+        print("invalid input, please enter 'y' for yes or 'n' for no.")
+        user_input = input()
+    if user_input.lower() == 'y':
+        return True
+    else:
+        return False
+
 
 def generate_embeddings(shows):
     # return embedding vector for all shows in csv file
