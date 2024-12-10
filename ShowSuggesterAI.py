@@ -6,10 +6,18 @@ df = pd.read_csv('imdb_tvshows.csv')
 
 def ask_from_user():
     # ask from user for N shows and return the list of shows after fixing typos and matching to csv file
-    # while no -> ask again from user -> each step call match_showes() and confirm_matches()
-    # call the match shows function and confirm matches function
-    # TODO: input validation
-    pass
+
+    print("Which TV shows did you really like watching? Separate them by a comma. Make sure to enter more than 1 show")
+    input_shows = input()
+    while(not valid_input(input_shows)):
+        input_shows = input()
+    fixed_shows = fix_and_match_shows(input_shows)
+    while not confirm_matches(fixed_shows):
+        print("Sorry about that. Lets try again, please make sure to write the names of the tv shows correctly")
+        input_shows = input()
+        fixed_shows = fix_and_match_shows(input_shows)
+    print("Great! Generating recommendations now…")
+    return fixed_shows
 
 def fix_and_match_shows(user_shows):
     # return a list of shows that match the user's shows based on csv file using fuzzy matching
@@ -41,6 +49,23 @@ def confirm_matches(fixed_shows_names ):
         return True
     else:
         return False
+
+def valid_input(user_input):
+    # check if the user input is valid
+    user_input = user_input.strip()
+    if not user_input:
+        print("Input is empty.")
+        return False
+    
+    shows = [show.strip() for show in user_input.split(',')]
+    
+    # Track invalid inputs
+    for show in shows:
+        if show == "" or show == " ":
+            print(f"you typed a comma without a show name")
+            return False
+
+    return True
 
 
 def generate_embeddings(shows):
