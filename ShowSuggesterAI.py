@@ -17,13 +17,16 @@ def fix_and_match_shows(user_shows):
     user_shows_list = [show.strip() for show in raw_show_list]
 
     matched_shows = []
+    seen_shows = set()
+
     for show in user_shows_list:
         # Use fuzzy matching to find the closest show title
         match = process.extractOne(show, tv_shows)
         # process.extractOne returns a tuple with the matched show title and the similarity score
         if match and match[1] > 70:  # Only consider matches with a confidence score > 70
-            matched_shows.append(match[0])
-
+            if match[0] not in seen_shows:
+                matched_shows.append(match[0])
+                seen_shows.add(match[0])
     return matched_shows
 
 def confirm_matches(fixed_shows_names):
