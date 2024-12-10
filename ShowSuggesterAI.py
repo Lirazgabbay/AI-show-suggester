@@ -1,5 +1,6 @@
 # showSuggesterAI.py
 import pandas as pd
+from thefuzz import process
 
 df = pd.read_csv('imdb_tvshows.csv')
 
@@ -11,7 +12,19 @@ def ask_from_user():
 
 def fix_and_match_shows(user_shows):
     # return a list of shows that match the user's shows based on csv file using fuzzy matching
-    pass
+    tv_shows = df['Title'].tolist()
+    raw_show_list = user_shows.split(',')
+    user_shows_list = [show.strip() for show in raw_show_list]
+
+    matched_shows = []
+    for show in user_shows_list:
+        # Use fuzzy matching to find the closest show title
+        match = process.extractOne(show, tv_shows)
+        # process.extractOne returns a tuple with the matched show title and the similarity score
+        if match and match[1] > 70:  # Only consider matches with a confidence score > 70
+            matched_shows.append(match[0])
+
+    return matched_shows
 
 def confirm_matches(fixed_shows_names):
     # ask the user for confirmation after fixing shows names and return True if confirmed
