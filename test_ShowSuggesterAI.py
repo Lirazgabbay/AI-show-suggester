@@ -9,35 +9,37 @@ df = pd.read_csv('imdb_tvshows.csv')
 # Test 1: Check if the user enter "user_input" fix_and_match_shows return "expected_fixed_output"
 def test_ask_from_user(monkeypatch):
     user_shows = "gem of throns, lupan, witcher"
-    expected_fixed_output = "Game Of Thrones, Lupin, The Witcher"
+    expected_fixed_output = ["Game of Thrones", "Lupin", "The Witcher"]
     # Call the function and get the result
     result = fix_and_match_shows(user_shows)
+    print(result)
+    print(expected_fixed_output)
     assert result == expected_fixed_output
 
 # Test 2: Check if the user enter unknown shows fix_and_match_shows return []
 def test_match_shows_no_matches():
-    user_shows = ["unknown show", "random series"]
+    user_shows = "unknown show, random series"
     expected_matches = []  
     result = fix_and_match_shows(user_shows)
     assert result == expected_matches
 
 # Test 3: Check if the user enter unknown show and a user input 
 def test_match_shows_partially_matches():
-    user_shows = ["unknown show", "lupan"]
+    user_shows = "unknown show, lupan"
     expected_matches = ["Lupin"]  
     result = fix_and_match_shows(user_shows)
     assert result == expected_matches
 
 # Test 4: check for matching shows
 def test_match_shows_perfect_matches():
-    user_shows = ["Lupin"]
+    user_shows = "Lupin"
     expected_matches = ["Lupin"]  
     result = fix_and_match_shows(user_shows)
     assert result == expected_matches
 
 # Test 5: check for no reapiting match shows
 def test_match_shows_repeat_matches():
-    user_shows = ["Luin", "Lupn"]
+    user_shows = "Luin, Lupn"
     expected_matches = ["Lupin"]  
     result = fix_and_match_shows(user_shows)
     assert result == expected_matches
@@ -47,13 +49,13 @@ def test_distance_between_embeddings():
     # Test case with valid embeddings
     average_user_embedding = np.array([0.5, 0.2, 0.8])
     all_embeddings = {
-        "Game Of Thrones": np.array([0.6, 0.1, 0.7]),
+        "Game of Thrones": np.array([0.6, 0.1, 0.7]),
         "Lupin": np.array([0.1, 0.3, 0.9]),
         "The Witcher": np.array([0.5, 0.2, 0.8]),
     }
     # Expected distances calculated manually
     expected_distances = {
-        "Game Of Thrones": np.linalg.norm(average_user_embedding - all_embeddings["Game Of Thrones"]),
+        "Game of Thrones": np.linalg.norm(average_user_embedding - all_embeddings["Game Of Thrones"]),
         "Lupin": np.linalg.norm(average_user_embedding - all_embeddings["Lupin"]),
         "The Witcher": np.linalg.norm(average_user_embedding - all_embeddings["The Witcher"]),
     }
@@ -72,10 +74,10 @@ def test_distance_between_embeddings_empty_embeddings():
 def test_distance_between_embeddings_identical_embeddings():
     average_user_embedding = np.array([0.5, 0.2, 0.8])
     all_embeddings = {
-        "Game Of Thrones": np.array([0.5, 0.2, 0.8])
+        "Game of Thrones": np.array([0.5, 0.2, 0.8])
     }
     expected_distances = {
-        "Game Of Thrones": 0.0
+        "Game of Thrones": 0.0
     }
     result = distances_between_embeddings(average_user_embedding, all_embeddings)
     assert result == expected_distances
