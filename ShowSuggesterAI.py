@@ -4,17 +4,31 @@ from thefuzz import process
 
 df = pd.read_csv('imdb_tvshows.csv')
 
+def collect_tv_shows():
+    print("Enter the name of your favorite TV shows, one at a time.")
+    print("When you're done, just press Enter without typing anything.")
+
+    tv_shows = []
+    while True:
+        print(f"Enter a TV show (or press Enter to finish): ")
+        show = input()
+        # show = input("Enter a TV show: ")
+        if not show.strip():  # Stop if the input is empty
+            break
+        tv_shows.append(show.strip())
+        print(f"Added '{show.strip()}' to your list!")
+    return tv_shows
+
 def ask_from_user():
     # ask from user for N shows and return the list of shows after fixing typos and matching to csv file
-
-    print("Which TV shows did you really like watching? Separate them by a comma. Make sure to enter more than 1 show")
-    input_shows = input()
+    print("Welcome to the TV Show Suggester!")
+    input_shows = collect_tv_shows()
     while(not valid_input(input_shows)):
-        input_shows = input()
+        input_shows = collect_tv_shows()
     fixed_shows = fix_and_match_shows(input_shows)
     while not confirm_matches(fixed_shows):
         print("Sorry about that. Lets try again, please make sure to write the names of the tv shows correctly")
-        input_shows = input()
+        input_shows = collect_tv_shows()
         fixed_shows = fix_and_match_shows(input_shows)
     print("Great! Generating recommendations now…")
     return fixed_shows
@@ -22,13 +36,14 @@ def ask_from_user():
 def fix_and_match_shows(user_shows):
     # return a list of shows that match the user's shows based on csv file using fuzzy matching
     tv_shows = df['Title'].tolist()
-    raw_show_list = user_shows.split(',')
-    user_shows_list = [show.strip() for show in raw_show_list]
+    user_shows_list = [show.strip() for show in user_shows] # remove leading and trailing whitespaces
 
     matched_shows = []
     seen_shows = set()
 
     for show in user_shows_list:
+        if show is None or show == "":  # Skip empty strings
+            continue
         # Use fuzzy matching to find the closest show title
         match = process.extractOne(show, tv_shows)
         # process.extractOne returns a tuple with the matched show title and the similarity score
@@ -38,9 +53,10 @@ def fix_and_match_shows(user_shows):
                 seen_shows.add(match[0])
     return matched_shows
 
-def confirm_matches(fixed_shows_names ):
+def confirm_matches(fixed_shows_names):
     # ask the user for confirmation after fixing shows names and return True if confirmed
-    print(f"Making sure, do you mean {str(fixed_shows_names)}? (y/n)")
+    str_fixed_shows_names = ', '.join(fixed_shows_names)
+    print(f"Making sure, do you mean {str_fixed_shows_names}? (y/n)")
     user_input = input()
     while user_input.lower() not in ['y', 'n']: 
         print("invalid input, please enter 'y' for yes or 'n' for no.")
@@ -51,20 +67,11 @@ def confirm_matches(fixed_shows_names ):
         return False
 
 def valid_input(user_input):
-    # check if the user input is valid
-    user_input = user_input.strip()
-    if not user_input:
-        print("Input is empty.")
+    # check if the user input is valid    
+    shows = [show.strip() for show in user_input]
+    if all (show == "" for show in shows):
+        print("You didn't enter any TV shows.")
         return False
-    
-    shows = [show.strip() for show in user_input.split(',')]
-    
-    # Track invalid inputs
-    for show in shows:
-        if show == "" or show == " ":
-            print(f"you typed a comma without a show name")
-            return False
-
     return True
 
 
