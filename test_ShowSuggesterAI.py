@@ -97,7 +97,7 @@ def test_genrate_new_recommendations_multiple_options():
     fixed_user_input = ["Lupin", "The Witcher"]
     dict_shows_vectors = load_embedding_from_pickle() 
     avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
-    recommendations = genrate_new_recommendations(avg_embedding, dict_shows_vectors)
+    recommendations = genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
     assert ["Lupin", "The Witcher"] not in recommendations
 
 # Test 11: if the user enter "Lupin" the reccomendtions won't include "Lupin"

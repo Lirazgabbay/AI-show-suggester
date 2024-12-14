@@ -176,48 +176,56 @@ def load_user_embedding(user_shows, dict_shows_vectors):
 
 def genrate_new_recommendations(user_input, avg_embedding, dict_shows_vectors):
     # return a list of shows with their closest similarity to the user's embedding
-    pass
+    dict_show_distance = distances_between_embeddings(avg_embedding, dict_shows_vectors)
+    closest_shows_dict = closest_shows(user_input, dict_show_distance)
+    dict_show_percentages = converte_to_percentages(closest_shows_dict, dict_show_distance)
+
+    print("Here are the tv shows that I think you would love:")
+    for show in closest_shows_dict:
+        print(f"{show} ({dict_show_percentages[show]}%)")
+    return list(closest_shows_dict.keys())
 
 def distances_between_embeddings(avg_user_embedding, dict_shows_vectors):
     # return dictionary: showname -> distance from avg
     # later : use usearch or annoy to find the closest shows to the user's embedding
     dict_show_distance = {}
     for show, vector in dict_shows_vectors.items():
+        avg_user_embedding = np.array(avg_user_embedding)
+        vector = np.array(vector)
         distance = np.linalg.norm(avg_user_embedding - vector)
         dict_show_distance[show] = distance
 
     return dict_show_distance
     
 
-def closest_shows(user_input, distance_dict):
+def closest_shows(user_input, distance_dict, top_n=5):
     # receive dictionary: showname -> distance_to_avg_TV_shows_embedding 
-    # return dict of the top 5 closest shows (different from user_input) to the user's embedding sorting by distance (shortest distance first)
+    # return dict of the top n = 5 closest shows (different from user_input) to the user's embedding sorting by distance (shortest distance first)
     # the return value will be names
-    pass
+    filtered_dict = {}
+    # filter out the shows that the user already input
+    for show_name, distance_to_avg in distance_dict.items():
+        if show_name not in user_input:
+            filtered_dict[show_name] = distance_to_avg
+    sorted_top_n = sorted(filtered_dict.items(), key=lambda item: item[1], reverse=True)[:top_n]
+    # Convert Back to Dictionary
+    dict_closestShow_distance = dict(sorted_top_n)
+    return dict_closestShow_distance
 
-def converte_to_percentages(closest_shows):
+def converte_to_percentages(closest_shows_dict, dict_show_distance ):
     # receive dictionary of the top 5 closest shows: showname -> distance_to_avg_TV_shows_embedding 
     # return a list of shows with their percentages similarity to the user's embedding
-    pass
-
-def print_recommendations(recommendations, percentages):
-    # print the recommendations
-    pass
-
-
-print(load_embedding_from_pickle()['Suits'])
+    max_distance = max(dict_show_distance.values()) #retrive the max distance
+    dict_show_similarity = {}
+    for show_name, distance_to_avg in closest_shows_dict.items():
+        similarity = (1 - (distance_to_avg / max_distance)) * 100
+        dict_show_similarity[show_name] = similarity 
+    return dict_show_similarity
 
 def main():
     connect_to_openai()
     fixed_user_input = ask_from_user()
     dict_shows_vectors = pickle_hit_or_miss()
     avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
-
+    genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
     
-    all_embeddings = load_embedding_from_pickle(df['Title'] ) #csv['Title'] 
-    user_embedding = load_embedding_from_pickle(fixed_user_input)
-    dict_distances = distances_between_embeddings(avg_embedding,all_embeddings)
-    closest_shows = closest_shows(dict_distances)
-    percentages = converte_to_percentages(closest_shows)
-    recommendations = genrate_new_recommendations(user_embedding, dict_distances)
-    print_recommendations(recommendations, percentages)
