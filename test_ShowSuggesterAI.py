@@ -1,4 +1,4 @@
-from ShowSuggesterAI import distances_between_embeddings,fix_and_match_shows,generate_average_embeddings, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
+from ShowSuggesterAI import pickle_hit_or_miss, load_user_embedding,distances_between_embeddings,fix_and_match_shows,generate_average_embeddings, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
 import pytest
 import pandas as pd
 import numpy as np
@@ -48,66 +48,64 @@ def test_match_shows_repeat_matches():
 def test_distance_between_embeddings():
     # Test case with valid embeddings
     average_user_embedding = np.array([0.5, 0.2, 0.8])
-    all_embeddings = {
-        "Game of Thrones": np.array([0.6, 0.1, 0.7]),
+    dict_shows_vectors = {
+        "Game Of Thrones": np.array([0.6, 0.1, 0.7]),
         "Lupin": np.array([0.1, 0.3, 0.9]),
         "The Witcher": np.array([0.5, 0.2, 0.8]),
     }
     # Expected distances calculated manually
     expected_distances = {
-        "Game of Thrones": np.linalg.norm(average_user_embedding - all_embeddings["Game Of Thrones"]),
-        "Lupin": np.linalg.norm(average_user_embedding - all_embeddings["Lupin"]),
-        "The Witcher": np.linalg.norm(average_user_embedding - all_embeddings["The Witcher"]),
+        "Game Of Thrones": np.linalg.norm(average_user_embedding - dict_shows_vectors["Game Of Thrones"]),
+        "Lupin": np.linalg.norm(average_user_embedding - dict_shows_vectors["Lupin"]),
+        "The Witcher": np.linalg.norm(average_user_embedding - dict_shows_vectors["The Witcher"]),
     }
-    result = distances_between_embeddings(average_user_embedding, all_embeddings)
+    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
     assert result == pytest.approx(expected_distances)
+
 
 # Test 7: run an example of distance_between_embeddings to check if the function handles empty embeddings
 def test_distance_between_embeddings_empty_embeddings():
     average_user_embedding = np.array([0.5, 0.2, 0.8])
-    all_embeddings = {} 
+    dict_shows_vectors = {} 
     expected_distances = {} 
-    result = distances_between_embeddings(average_user_embedding, all_embeddings)
+    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
     assert result == expected_distances
 
 # Test 8: run an example of distance_between_embeddings to check if the function handles empty average_user_embedding
 def test_distance_between_embeddings_identical_embeddings():
     average_user_embedding = np.array([0.5, 0.2, 0.8])
-    all_embeddings = {
-        "Game of Thrones": np.array([0.5, 0.2, 0.8])
+    dict_shows_vectors = {
+        "Game Of Thrones": np.array([0.5, 0.2, 0.8])
     }
     expected_distances = {
-        "Game of Thrones": 0.0
+        "Game Of Thrones": 0.0
     }
-    result = distances_between_embeddings(average_user_embedding, all_embeddings)
+    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
     assert result == expected_distances
 
 # Test 9: Validates the function's behavior with a large dataset, ensuring all distances are calculated and non-negative.
 def test_distance_between_embeddings_large_input():
     average_user_embedding = np.random.rand(100)
-    all_embeddings = {f"Show {i}": np.random.rand(100) for i in range(1000)}
-    result = distances_between_embeddings(average_user_embedding, all_embeddings)
+    dict_shows_vectors = {f"Show {i}": np.random.rand(100) for i in range(1000)}
+    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
     assert len(result) == 1000
     assert all(distance >= 0 for distance in result.values())
+
 
 # Test 10: if the user enter "Lupin" the reccomendtions won't include "Lupin"
 def test_genrate_new_recommendations_multiple_options():
     fixed_user_input = ["Lupin", "The Witcher"]
-    avg_embedding = generate_average_embeddings(fixed_user_input)
-    all_embeddings = load_embedding_from_pickle(df['Title'] ) #csv['Title'] 
-    user_embedding = load_embedding_from_pickle(fixed_user_input)
-    dict_distances = distances_between_embeddings(avg_embedding,all_embeddings)
-    closest_shows = closest_shows(dict_distances)
-    recommendations = genrate_new_recommendations(user_embedding, dict_distances)
+    dict_shows_vectors = load_embedding_from_pickle() 
+    avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
+    recommendations = genrate_new_recommendations(avg_embedding, dict_shows_vectors)
     assert ["Lupin", "The Witcher"] not in recommendations
 
 # Test 11: if the user enter "Lupin" the reccomendtions won't include "Lupin"
 def test_genrate_new_recommendations_one_option():
+    dict_shows_vectors = pickle_hit_or_miss() 
     fixed_user_input = ["Lupin"]
-    avg_embedding = generate_average_embeddings(fixed_user_input)
-    all_embeddings = load_embedding_from_pickle(df['Title'] ) #csv['Title'] 
-    user_embedding = load_embedding_from_pickle(fixed_user_input)
-    dict_distances = distances_between_embeddings(avg_embedding,all_embeddings)
-    closest_shows = closest_shows(dict_distances)
-    recommendations = genrate_new_recommendations(user_embedding, dict_distances)
+    avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
+    recommendations = genrate_new_recommendations(fixed_user_input,avg_embedding, dict_shows_vectors)
     assert "Lupin" not in recommendations
+
+    

@@ -1,4 +1,5 @@
 # showSuggesterAI.py
+import numpy as np
 import pandas as pd
 from thefuzz import process
 import os
@@ -173,25 +174,30 @@ def load_user_embedding(user_shows, dict_shows_vectors):
     return user_embeddings
 
 
-def distances_between_embeddings(average_user_embedding, all_embeddings):
-    # return dictionary: showname -> distance
-    # the distance is between average user's embedding to all tv shows embeddings
-    # later : use usearch or annoy to find the closest shows to the user's embedding
+def genrate_new_recommendations(user_input, avg_embedding, dict_shows_vectors):
+    # return a list of shows with their closest similarity to the user's embedding
     pass
 
-def closest_shows(distance_dict):
+def distances_between_embeddings(avg_user_embedding, dict_shows_vectors):
+    # return dictionary: showname -> distance from avg
+    # later : use usearch or annoy to find the closest shows to the user's embedding
+    dict_show_distance = {}
+    for show, vector in dict_shows_vectors.items():
+        distance = np.linalg.norm(avg_user_embedding - vector)
+        dict_show_distance[show] = distance
+
+    return dict_show_distance
+    
+
+def closest_shows(user_input, distance_dict):
     # receive dictionary: showname -> distance_to_avg_TV_shows_embedding 
-    # return dict of the top 5 closest shows to the user's embedding sorting by distance (shortest distance first)
+    # return dict of the top 5 closest shows (different from user_input) to the user's embedding sorting by distance (shortest distance first)
     # the return value will be names
     pass
 
 def converte_to_percentages(closest_shows):
     # receive dictionary of the top 5 closest shows: showname -> distance_to_avg_TV_shows_embedding 
     # return a list of shows with their percentages similarity to the user's embedding
-    pass
-
-def genrate_new_recommendations(user_embedding, distances_between_average_all_embeddings):
-    # return a list of shows with their cosine similarity to the user's embedding
     pass
 
 def print_recommendations(recommendations, percentages):
