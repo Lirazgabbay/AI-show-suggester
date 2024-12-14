@@ -153,12 +153,25 @@ def connect_to_openai():
     return client
 
 
-def generate_average_embedding(user_embedding):
+def generate_average_embeddings(user_shows, dict_shows_vectors):
     # return the average embedding of the user's shows
-    # 1. pickle_hit_or_miss
-    # 2. if hit - load_embedding_from_pickle, else- generate_embeddings and save_embedding_to_pickle
-    # 3. generate_avarage_embedding
-    pass
+    length = len(user_shows)
+    user_embeddings = load_user_embedding(user_shows, dict_shows_vectors)
+
+    # sum the vectors of all user's shows by cordination, and divide by the total number of user's shows
+    average_vector = [sum(x)/length for x in zip(*user_embeddings)]
+
+    return average_vector
+
+
+def load_user_embedding(user_shows, dict_shows_vectors):
+    user_embeddings = []
+    for show in user_shows:
+        current_vector = dict_shows_vectors[show]
+        user_embeddings.append(current_vector)       
+
+    return user_embeddings
+
 
 def distances_between_embeddings(average_user_embedding, all_embeddings):
     # return dictionary: showname -> distance
@@ -192,8 +205,9 @@ def main():
     connect_to_openai()
     fixed_user_input = ask_from_user()
     dict_shows_vectors = pickle_hit_or_miss()
+    avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
+
     
-    avg_embedding = generate_average_embedding(fixed_user_input)
     all_embeddings = load_embedding_from_pickle(df['Title'] ) #csv['Title'] 
     user_embedding = load_embedding_from_pickle(fixed_user_input)
     dict_distances = distances_between_embeddings(avg_embedding,all_embeddings)
