@@ -1,4 +1,4 @@
-from ShowSuggesterAI import distances_between_embeddings,fix_and_match_shows,generate_average_embedding, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
+from ShowSuggesterAI import distances_between_embeddings,fix_and_match_shows,generate_average_embeddings, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
 import pytest
 import pandas as pd
 import numpy as np
@@ -93,7 +93,7 @@ def test_distance_between_embeddings_large_input():
 # Test 10: if the user enter "Lupin" the reccomendtions won't include "Lupin"
 def test_genrate_new_recommendations_multiple_options():
     fixed_user_input = ["Lupin", "The Witcher"]
-    avg_embedding = generate_average_embedding(fixed_user_input)
+    avg_embedding = generate_average_embeddings(fixed_user_input)
     all_embeddings = load_embedding_from_pickle(df['Title'] ) #csv['Title'] 
     user_embedding = load_embedding_from_pickle(fixed_user_input)
     dict_distances = distances_between_embeddings(avg_embedding,all_embeddings)
@@ -104,7 +104,7 @@ def test_genrate_new_recommendations_multiple_options():
 # Test 11: if the user enter "Lupin" the reccomendtions won't include "Lupin"
 def test_genrate_new_recommendations_one_option():
     fixed_user_input = ["Lupin"]
-    avg_embedding = generate_average_embedding(fixed_user_input)
+    avg_embedding = generate_average_embeddings(fixed_user_input)
     all_embeddings = load_embedding_from_pickle(df['Title'] ) #csv['Title'] 
     user_embedding = load_embedding_from_pickle(fixed_user_input)
     dict_distances = distances_between_embeddings(avg_embedding,all_embeddings)
