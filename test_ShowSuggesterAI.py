@@ -1,4 +1,4 @@
-from ShowSuggesterAI import pickle_hit_or_miss, load_user_embedding,distances_embeddings_avg,fix_and_match_shows,generate_average_embeddings, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
+from ShowSuggesterAI import fix_and_match_shows, distances_embeddings_avg, pickle_hit_or_miss, load_embedding_from_pickle,genrate_new_recommendations, generate_average_embeddings
 import pytest
 import pandas as pd
 import numpy as np

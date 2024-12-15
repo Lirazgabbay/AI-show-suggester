@@ -238,4 +238,5 @@ def main():
     avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
     genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
     
-main()
+if __name__ == "__main__":
+    main()
