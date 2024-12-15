@@ -1,4 +1,4 @@
-from ShowSuggesterAI import pickle_hit_or_miss, load_user_embedding,distances_between_embeddings,fix_and_match_shows,generate_average_embeddings, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
+from ShowSuggesterAI import pickle_hit_or_miss, load_user_embedding,distances_embeddings_avg,fix_and_match_shows,generate_average_embeddings, genrate_new_recommendations, load_embedding_from_pickle, closest_shows
 import pytest
 import pandas as pd
 import numpy as np
@@ -59,7 +59,7 @@ def test_distance_between_embeddings():
         "Lupin": np.linalg.norm(average_user_embedding - dict_shows_vectors["Lupin"]),
         "The Witcher": np.linalg.norm(average_user_embedding - dict_shows_vectors["The Witcher"]),
     }
-    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
+    result = distances_embeddings_avg(average_user_embedding, dict_shows_vectors)
     assert result == pytest.approx(expected_distances)
 
 
@@ -68,7 +68,7 @@ def test_distance_between_embeddings_empty_embeddings():
     average_user_embedding = np.array([0.5, 0.2, 0.8])
     dict_shows_vectors = {} 
     expected_distances = {} 
-    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
+    result = distances_embeddings_avg(average_user_embedding, dict_shows_vectors)
     assert result == expected_distances
 
 # Test 8: run an example of distance_between_embeddings to check if the function handles empty average_user_embedding
@@ -80,14 +80,14 @@ def test_distance_between_embeddings_identical_embeddings():
     expected_distances = {
         "Game Of Thrones": 0.0
     }
-    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
+    result = distances_embeddings_avg(average_user_embedding, dict_shows_vectors)
     assert result == expected_distances
 
 # Test 9: Validates the function's behavior with a large dataset, ensuring all distances are calculated and non-negative.
 def test_distance_between_embeddings_large_input():
     average_user_embedding = np.random.rand(100)
     dict_shows_vectors = {f"Show {i}": np.random.rand(100) for i in range(1000)}
-    result = distances_between_embeddings(average_user_embedding, dict_shows_vectors)
+    result = distances_embeddings_avg(average_user_embedding, dict_shows_vectors)
     assert len(result) == 1000
     assert all(distance >= 0 for distance in result.values())
 
