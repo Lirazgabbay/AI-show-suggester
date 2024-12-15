@@ -5,7 +5,13 @@ from thefuzz import process
 import os
 import pickle
 from openai import OpenAI
+import requests
 from dotenv import load_dotenv
+from PIL import Image
+from io import BytesIO
+import time
+import openai
+import json
 
 
 def load_csv():
@@ -42,15 +48,15 @@ def collect_tv_shows():
     print("Enter the name of your favorite TV shows, one at a time.")
     print("When you're done, just press Enter without typing anything.")
 
-    tv_shows = []
+    user_tv_shows = []
     while True:
         print(f"Enter a TV show (or press Enter to finish): ")
         show = input()
         if not show:  # Stop if Enter is pressed
             break
-        tv_shows.append(show.strip())
+        user_tv_shows.append(show.strip())
         print(f"Added '{show.strip()}' to your list!")
-    return tv_shows
+    return user_tv_shows
 
 
 def fix_and_match_shows(user_shows):
@@ -212,7 +218,6 @@ def closest_shows(user_input, distance_dict, top_n=5):
     sorted_top_n = sorted(filtered_dict.items(), key=lambda item: item[1], reverse=False)[:top_n]
     # Convert Back to Dictionary
     dict_closestShow_distance = dict(sorted_top_n)
-    print(dict_closestShow_distance)
     return dict_closestShow_distance
 
 def converte_to_percentages(closest_shows_dict, dict_show_distance ):
@@ -231,12 +236,210 @@ def converte_to_percentages(closest_shows_dict, dict_show_distance ):
             similarity = (1 - normalized_distance) * 99  # Invert normalized distance
             dict_show_similarity[show_name] = int(similarity)
         return dict_show_similarity
+    
+
+def generate_new_tv_shows(user_shows_list, user_shows_descriptions_list, recomended_shows, recomended_shows_descriptions):
+    # last step - generate 2 new shows ad according to user's input and program recommendations for him
+    # prints the a message and display the images to the screen
+    new_show_name1 , new_description_name1 = generate_showName_description(user_shows_list, user_shows_descriptions_list)
+    new_show_name2 , new_description_name2 = generate_showName_description(recomended_shows, recomended_shows_descriptions)
+    url_1 = generate_tv_show_ad(new_show_name1 , new_description_name1)
+    url_2 = generate_tv_show_ad(new_show_name2 , new_description_name2)
+    print_show_ad(new_show_name1, new_description_name1, new_show_name2, new_description_name2)
+
+    if url_1:
+        open_image_from_url(url_1)
+    else:
+        print("Failed to generate image for first show")
+        
+    if url_2:
+        open_image_from_url(url_2)
+    else:
+        print("Failed to generate image for second show")
+
+
+def generate_showName_description(shows, descriptions):
+    """
+    Connects to OpenAI to generate a new TV show name and description based on given shows.
+
+    Args:
+        shows (list of str): List of TV show names.
+        descriptions (list of str): Corresponding descriptions of the TV shows.
+
+    Returns:
+        tuple: (new_show_name, new_show_description)
+    """
+    client = connect_to_openai()
+
+    # Combine shows and descriptions into a single string
+    tvShows_description = "\n".join(
+        [f"TV Show Name: {show}, Description: {description}" for show, description in zip(shows, descriptions)]
+    )
+
+    # Define the messages for the chat completion
+    messages = [
+        {
+            "role": "system", 
+            "content": """You are an expert screenwriter who creates TV shows based on content the user likes. 
+            Create a new show with a title and a complete two-sentence description.
+            You must respond using this exact format, including the curly braces and quotes:
+            {
+                "title": "Your Show Title Here",
+                "description": "Your complete two-sentence description here."
+            }"""
+        },
+        {
+            "role": "user", 
+            "content": f"Based on these shows, suggest a new imaginary show:\n{tvShows_description}"
+        }
+    ]
+
+    try:
+        # Generate a response from the OpenAI API
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7,  # Add some creativity
+            max_tokens=300    # Ensure we get a complete response
+        )
+        
+        # Get the response content
+        response_text = response.choices[0].message.content.strip()
+        try:
+            result = json.loads(response_text)
+
+            title = result.get("title", "").strip()
+            description = result.get("description", "").strip()
+
+            if not title or not description:
+                print("Error: Generated response is missing title or description")
+                print(f"Received response: {response_text}")
+                return None, None
+            
+            return title, description
+
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse JSON response: {e}")
+            print(f"Received response: {response_text}")
+            return None, None
+
+    except Exception as e:
+        print(f"An error occurred while generating the show name and description: {e}")
+        return None, None
+
+
+def open_image_from_url(image_url):
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # Check if the request was successful
+        image = Image.open(BytesIO(response.content))
+        image.show()
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to retrieve image from {image_url}: {e}")
+    except Exception as e:
+        print(f"Error processing image from {image_url}: {e}")
+
+
+def print_show_ad(show1name, show1description, show2name, show2description):
+    # Print the show descriptions
+    print(f"I have also created just for you two shows which I think you would love.\n"
+        f"Show #1 is based on the fact that you loved the input shows that you gave me. "
+        f"Its name is {show1name} and it is about {show1description}\n"
+        f"Show #2 is based on the shows that I recommended for you. Its name is {show2name} "
+        f"and it is about {show2description}\n"
+        f"Here are also the 2 tv show ads. Hope you like them!")
+    
+
+def generate_tv_show_ad(new_show_name, new_show_description):
+    url = 'https://api.lightxeditor.com/external/api/v1/text2image'
+    api_key = connect_to_LightX()
+    headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': api_key
+    }
+
+    # Create the data payload with both the show name and description as the text prompt
+    data = {
+        "textPrompt": f"An image inspired by the TV show '{new_show_name}' and the Description: {new_show_description}"
+    }
+
+    # Send request to generate image
+    response = requests.post(url, headers=headers, json=data)
+
+    if response.status_code == 200:
+        # Retrieve the orderId for status checking
+        order_id = response.json()['body']['orderId']
+        # Now check the status of the image generation
+        check_url = 'https://api.lightxeditor.com/external/api/v1/order-status'
+        status_payload = {
+            "orderId": order_id
+        }
+
+        retries = 0
+        max_retries = 5
+        status = "init"
+        image_url = None
+
+        # Keep checking the status until the image is ready or retries are exhausted
+        while status != "active" and retries < max_retries:
+            status_response = requests.post(check_url, headers=headers, json=status_payload)
+
+            if status_response.status_code == 200:
+                status_info = status_response.json()['body']
+                status = status_info['status']
+                if status == "active":
+                    return status_info.get('output')  # This is the image URL
+            else:
+                print(f"Failed to check status. Status code: {status_response.status_code}")
+                break
+
+            # Wait for 3 seconds before checking again
+            time.sleep(3)
+            retries += 1
+
+        if image_url:
+            # You can use the image URL to download or display the image
+            image_response = requests.get(image_url)
+            if image_response.status_code == 200:
+                img = Image.open(BytesIO(image_response.content))
+                return img
+            else:
+                print("Image generation failed or was not completed in time.")
+                return None
+    else:
+        return None
+
+
+
+def connect_to_LightX():
+    # Connect to the LightX and return the api-key
+    # Get API key from environment variable
+    load_dotenv()
+    api_key = os.getenv('LightX_API_KEY')
+    if not api_key:
+        raise ValueError("LightX_API_KEY environment variable is not set. Please set it with your LightX key.")
+    print(f"API Key loaded: {api_key[:5]}...") # Print first 5 chars to verify it's loaded
+    return api_key
+
+
+def get_shows_descriptions(shows_list):
+    df = load_csv()
+    shows_descriptions = []
+    for show in shows_list:
+        description = df[df['Title'] == show]['Description'].values[0]
+        shows_descriptions.append(description)
+    return shows_descriptions
+
 
 def main():
     fixed_user_input = ask_from_user()
     dict_shows_vectors = pickle_hit_or_miss()
     avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
-    genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
+    closest_shows = genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
+    user_shows_descriptions_list = get_shows_descriptions(fixed_user_input)
+    recomended_shows_descriptions = get_shows_descriptions(closest_shows)
+    generate_new_tv_shows(fixed_user_input,user_shows_descriptions_list ,closest_shows,recomended_shows_descriptions)
     
 if __name__ == "__main__":
     main()
+   
