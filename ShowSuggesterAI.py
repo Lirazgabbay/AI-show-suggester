@@ -12,6 +12,7 @@ from io import BytesIO
 import time
 import openai
 import json
+from annoy import AnnoyIndex
 
 
 def load_csv():
@@ -107,7 +108,8 @@ def confirm_matches(fixed_shows_names):
 
 
 def pickle_hit_or_miss():
-    # check if the pickle file exists, otherwise create it, and return the dict_shows_vectors (show name: vector)
+    # check if the pickle file exists, otherwise create it
+    # returns : dict_shows_vectors: (show name: vector) for all shows in csv file
     if os.path.exists("tv_shows_embeddings.pkl"):
         return load_embedding_from_pickle()
     else:
@@ -182,16 +184,48 @@ def load_user_embedding(user_shows, dict_shows_vectors):
 
     return user_embeddings
 
+def build_annoy_index(dict_shows_vectors, metric='angular', n_trees=10):
+    '''
+    This function builds an approximate nearest neighbor index using the Annoy library for a set of show embeddings. 
+    It allows for fast similarity searches between shows based on their embeddings.
+
+    args:
+    dict_shows_vectors (dict): A dictionary mapping show names to their embeddings.
+    metric (str): The distance metric to use. Default is 'angular'.
+    n_trees (int): The number of trees to build in the index. Default is 10 (to balance between speed and accuracy).
+
+    returns:
+    AnnoyIndex: The built Annoy index.
+    dict - id_to_show: A dictionary mapping index IDs to their corresponding show names.
+    '''
+    # Determine embedding dimension
+    if not dict_shows_vectors:
+        raise ValueError("No embeddings found to build an index.")
+    sample_vector = next(iter(dict_shows_vectors.values()))
+    dimension = len(sample_vector)
+
+    index = AnnoyIndex(dimension, metric=metric)
+    id_to_show = {}
+    
+    i = 0
+    for show_name, embedding in dict_shows_vectors.items():
+        id_to_show[i] = show_name
+        index.add_item(i, embedding)
+        i += 1
+    
+    # Build the index
+    index.build(n_trees)
+    return index, id_to_show
 
 def genrate_new_recommendations(user_input, avg_embedding, dict_shows_vectors):
     # return a list of shows with their closest similarity to the user's embedding
-    dict_show_distance = distances_embeddings_avg(avg_embedding, dict_shows_vectors)
-    closest_shows_dict = closest_shows(user_input, dict_show_distance)
-    dict_show_percentages = converte_to_percentages(closest_shows_dict, dict_show_distance)
+    annoy_index, id_to_show = build_annoy_index(dict_shows_vectors)
+    closest_shows_dict = closest_shows(user_input, avg_embedding, annoy_index, id_to_show, dict_shows_vectors)
     print("Here are the tv shows that I think you would love:")
-    for show in closest_shows_dict:
-        print(f"{show} ({dict_show_percentages[show]}%)")
+    for show, percentage in closest_shows_dict.items():
+        print(f"{show} ({percentage}%)")
     return list(closest_shows_dict.keys())
+
 
 def distances_embeddings_avg(avg_user_embedding, dict_shows_vectors):
     # return dictionary: showname -> distance from avg
@@ -205,37 +239,51 @@ def distances_embeddings_avg(avg_user_embedding, dict_shows_vectors):
 
     return dict_show_distance
     
+    
+def closest_shows(user_input, avg_embedding, annoy_index, id_to_show, dict_shows_vectors, top_n=5):
+    """
+    Finds the closest shows to a user's average embedding using Annoy index and calculates similarity scores.
+    """
+    candidate_count = top_n + len(user_input)
+    neighbor_ids = annoy_index.get_nns_by_vector(avg_embedding, candidate_count)
 
-def closest_shows(user_input, distance_dict, top_n=5):
-    # receive dictionary: showname -> distance_to_avg_TV_shows_embedding 
-    # return dict of the top n = 5 closest shows (different from user_input) to the user's embedding sorting by distance (shortest distance first)
-    # the return value will be names
-    filtered_dict = {}
-    # filter out the shows that the user already input
-    for show_name, distance_to_avg in distance_dict.items():
-        if show_name not in user_input:
-            filtered_dict[show_name] = distance_to_avg
-    sorted_top_n = sorted(filtered_dict.items(), key=lambda item: item[1], reverse=False)[:top_n]
-    # Convert Back to Dictionary
-    dict_closestShow_distance = dict(sorted_top_n)
-    return dict_closestShow_distance
+    # Filter out shows already in user_input
+    candidate_shows = [id_to_show[n_id] for n_id in neighbor_ids]
+    filtered_candidates = [show for show in candidate_shows if show not in user_input]
+    filtered_candidates = filtered_candidates[:top_n]
+    
+    filtered_vectors = {show: dict_shows_vectors[show] for show in filtered_candidates}
+    top_n_distances_dict = distances_embeddings_avg(avg_embedding, filtered_vectors)
+    similarity_scores = convert_to_percentages(top_n_distances_dict)
+    
+    return similarity_scores
 
-def converte_to_percentages(closest_shows_dict, dict_show_distance ):
+
+def convert_to_percentages(top_n_distances_dict, n=5):
     # receive dictionary of the top 5 closest shows: showname -> distance_to_avg_TV_shows_embedding 
     # return a list of shows with their percentages similarity to the user's embedding
-    max_distance = max(dict_show_distance.values()) #retrive the max distance
-    min_distance = min(closest_shows_dict.values())
+    # Compute distances only for these top candidates:
 
-
-    if max_distance == min_distance:
-        return {show_name: 100 for show_name in closest_shows_dict}
-    else:
-        dict_show_similarity = {}
-        for show_name, distance_to_avg in closest_shows_dict.items():
-            normalized_distance = (distance_to_avg - min_distance) / (max_distance - min_distance)
-            similarity = (1 - normalized_distance) * 99  # Invert normalized distance
-            dict_show_similarity[show_name] = int(similarity)
-        return dict_show_similarity
+    min_dist = min(top_n_distances_dict.values())
+    max_dist = max(top_n_distances_dict.values()) 
+    
+    df = load_csv()
+    csv_length = len(df['Title'].tolist())
+    print(csv_length)
+    # Handle the case where all distances are the same
+    if max_dist == min_dist:
+        return {show: 100 for show in top_n_distances_dict.keys()}
+    # Calculate similarity scores using a linear transformation
+    similarity_scores = {}
+    for show, dist in top_n_distances_dict.items():
+        normalized_distance = (dist - min_dist) / (max_dist - min_dist)
+        similarity = (1 - normalized_distance) 
+        # scale the similarity base on lentdht of csv and n:
+        min_scaling_factor = ((csv_length - n) / csv_length) * 100
+        similarity = min_scaling_factor + similarity * (100 - min_scaling_factor)
+        similarity_scores[show] = int(similarity)
+    
+    return similarity_scores
     
 
 def generate_new_tv_shows(user_shows_list, user_shows_descriptions_list, recomended_shows, recomended_shows_descriptions):
@@ -435,10 +483,10 @@ def main():
     fixed_user_input = ask_from_user()
     dict_shows_vectors = pickle_hit_or_miss()
     avg_embedding = generate_average_embeddings(fixed_user_input, dict_shows_vectors)
-    closest_shows = genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
+    closest_shows_list = genrate_new_recommendations(fixed_user_input, avg_embedding, dict_shows_vectors)
     user_shows_descriptions_list = get_shows_descriptions(fixed_user_input)
-    recomended_shows_descriptions = get_shows_descriptions(closest_shows)
-    generate_new_tv_shows(fixed_user_input,user_shows_descriptions_list ,closest_shows,recomended_shows_descriptions)
+    recomended_shows_descriptions = get_shows_descriptions(closest_shows_list)
+    generate_new_tv_shows(fixed_user_input,user_shows_descriptions_list ,closest_shows_list,recomended_shows_descriptions)
     
 if __name__ == "__main__":
     main()
