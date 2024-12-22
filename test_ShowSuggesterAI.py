@@ -1,7 +1,11 @@
-from ShowSuggesterAI import fix_and_match_shows, distances_embeddings_avg, pickle_hit_or_miss, load_embedding_from_pickle,genrate_new_recommendations, generate_average_embeddings
+
 import pytest
 import pandas as pd
 import numpy as np
+
+from embeddings import load_embedding_from_pickle, pickle_hit_or_miss
+from recomendations import distances_embeddings_avg, generate_average_embeddings, genrate_new_recommendations
+from user_interaction import fix_and_match_shows
 
 # Sample data
 df = pd.read_csv('imdb_tvshows.csv')
